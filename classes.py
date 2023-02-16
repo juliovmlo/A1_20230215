@@ -30,7 +30,7 @@ class WT:#Wind Turbine
                    'airfoildata/FFA-W3-600.txt','airfoildata/cylinder.txt']
             
             #Readin of tables:
-            self.cl_tab = np.zeros([105,6])
+            self.cl_tab = np.zeros([105,len(self.thick_lst)])
             self.cd_tab = np.zeros([105,6])
             self.cm_tab = np.zeros([105,6])
             for i in range(np.size(files)):
@@ -53,11 +53,41 @@ class WT:#Wind Turbine
     yaw_ang = np.radians(0) #degrees
     pitch_ang = np.radians(0) #degrees
     
+    #Blade element information
+    px = []*105
+    py = []*105
+    last_W = [0,0]
+    last_W_qs = [0,0]
+    last_W_int = [0,0]
+
 class Wind:#Wind conditions
     V_0_H = 10 #m/s
     nu = 0.2 #shear
     rho = 1.225 #density [kg/m3]
     
 class Config:
+    deltaT = 0.1
     WindShear = True
     TowerEffect = True
+    DynFilter = False
+    
+class Sim(WT):#This class contains the current information of the simulation and stores it
+    def __ini__(self):
+        self.t_end = 2*np.pi / WT.w * self.TotalRev
+        self.t_arr = np.arange(0, self.t_end, self.deltaT)
+    #Configuration
+    deltaT = 0.1 #[s]
+    TotalRev = 1
+    
+    WindShear = True
+    TowerEffect = True
+    DynFilter = True
+    
+    #Blade element information buffer
+    last_W = []*2
+    last_W_qs = []*2
+    last_W_int = []*2
+    
+    #Memory
+    px = []*105
+    py = []*105

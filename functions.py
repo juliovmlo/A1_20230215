@@ -192,8 +192,24 @@ def QuasySteadyIW(WT, Wind, V_0, Wy_old, Wz_old, blade_ang, element):
     Wy_qs = -WT.B*lift*np.sin(flow_ang)/denom
     Wz_qs = -WT.B*lift*np.cos(flow_ang)/denom
     
-    #Dynamic filtering: make function
-    Wy_new = Wy_qs
-    Wz_new = Wz_qs
+    return Wy_qs, Wz_qs, a, py, pz, C_l, C_d
+
+def DynFiltering (Wy_qs, Wz_qs, a, V_0, element, WT, Config):
+    if a > 0.5: a = 0.5
+    k = 0.6
+    tau1 = 1.1/(1-1.3*a)*WT.R/V_0
+    tau2 = (0.39 - 0.26*(WT.r_lst[element]/WT.R)**2)*tau1
     
-    return Wy_new, Wz_new, py, pz, C_l, C_d
+    W_yz = [0,0]
+    for i, W_qs in enumerate([Wy_qs, Wz_qs]):
+        
+        H = W_qs + k * tau1*(W_qs - WT.last_W_qs[i])/Config.deltaT
+        W_int = H + (WT.last_W_int[i] - H)*np.exp(-Config.deltaT/tau1)
+        W = W_int + (WT.last_W[i] - W_int)*np.exp(-Config.deltaT/tau2)
+        
+        #Store
+        WT.last_W_int[i] = W_int
+        W_yz[i] = W
+        WT.last_W[i] = W
+    
+    return W_yz[0], W_yz[1]

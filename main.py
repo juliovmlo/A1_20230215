@@ -5,6 +5,7 @@ Created on Wed Feb 15 09:56:20 2023
 @author: julio
 """
 import numpy as np
+from numpy import linalg as LA
 import matplotlib.pyplot as plt 
 import classes
 import functions as f
@@ -24,14 +25,12 @@ Config = classes.Config()
 # print(Wy_new, Wz_new)
 
 # Initialization
-deltaT = 0.1 #s
-
 rotor_ang_lst = []
 rotor_ang = 0
 
 TotalRev = 1
 t_end = 2*np.pi / WT.w * TotalRev
-t_arr = np.arange(0,t_end, deltaT)
+t_arr = np.arange(0,t_end, Config.deltaT)
 
 px_lst = [] #Absolute position
 py_lst = []
@@ -57,7 +56,7 @@ power_lst = []
 
 for j, t in enumerate(t_arr):
     #Update of rotor position
-    rotor_ang += WT.w*deltaT
+    rotor_ang += WT.w*Config.deltaT
     rotor_ang_lst.append(rotor_ang)
     
     #Pitch change
@@ -83,7 +82,15 @@ for j, t in enumerate(t_arr):
             #V_0 in the blade element
             V_0 = f.get_v0 (WT, Wind, Config, pos)
             
-            Wy_new, Wz_new, py, pz, C_l, C_d = f.QuasySteadyIW(WT, Wind, V_0, Wy_old, Wz_old, blade_ang, element)
+            #Quasy Steady Induced Wind
+            Wy_qs, Wz_qs, a, py, pz, C_l, C_d = f.QuasySteadyIW(WT, Wind, V_0, Wy_old, Wz_old, blade_ang, element)
+            
+            #Dynamic Filtering
+            if Config.DynFilter:
+                Wy_new, Wz_new = f.DynFiltering (Wy_qs, Wz_qs, a, LA.norm(V_0), element, WT, Config)
+            else:
+                Wy_new, Wz_new = Wy_qs, Wz_qs
+            
             Wy_old, Wz_old = Wy_new, Wz_new
             
             load_py_lst.append(py)
@@ -143,7 +150,7 @@ plt.figure()
 
 plt.figure(dpi=120)
 plt.title('Power')
-plt.plot(t_arr[:], [power_lst[i]/1e6 for i in range(len(power_lst))])
+plt.plot(t_arr[:], np.array(power_lst)/1e6)
 plt.gca().set_ylim(bottom=0)
 plt.ylabel('')
 plt.figure()
