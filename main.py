@@ -15,15 +15,6 @@ WT = classes.WT()
 Wind = classes.Wind()
 Config = classes.Config()
 
-# cl, cd, cm = f.force_coeffs_WT (WT, np.radians(0), 8)
-# print(cl)
-
-# V_0 = [0, 0,9]
-
-# Wy_new, Wz_new = f.QuasySteadyIW(WT, Wind, V_0, 0.5, 0.5, np.radians(0), 10)
-# print([0, 0, V_0])
-# print(Wy_new, Wz_new)
-
 # Initialization
 rotor_ang_lst = []
 rotor_ang = 0
@@ -54,7 +45,7 @@ load_pz_elem_lst = []
 thrust_lst = []
 power_lst = []
 
-for j, t in enumerate(t_arr):
+for t in t_arr:
     #Update of rotor position
     rotor_ang += WT.w*Config.deltaT
     rotor_ang_lst.append(rotor_ang)
@@ -64,14 +55,14 @@ for j, t in enumerate(t_arr):
     if t > 5:
         WT.pitch_ang = np.radians(8)
     
-    #Inicialize
+    #Inicialize blade loop
     thrust = 0
     power = 0
     for i, b in enumerate(range(WT.B)):
-        #Position of blade
+        #Update position of blade
         blade_ang = rotor_ang + b*2*np.pi/WT.B
         
-        #Inicialize
+        #Inicialize radius loop
         load_py_lst = []
         load_pz_lst = []
         for element in range(len(WT.r_lst)-1):
@@ -80,26 +71,27 @@ for j, t in enumerate(t_arr):
             py_lst.append(pos[1])
             
             #V_0 in the blade element
-            V_0 = f.get_v0 (WT, Wind, Config, pos)
+            V_0_vec = f.get_v0 (WT, Wind, Config, pos)
             
             #Quasy Steady Induced Wind
-            Wy_qs, Wz_qs, a, py, pz, C_l, C_d = f.QuasySteadyIW(WT, Wind, V_0, Wy_old, Wz_old, blade_ang, element)
+            Wy_qs, Wz_qs, a, py, pz, C_l, C_d = f.QuasySteadyIW(WT, Wind, V_0_vec, WT.last_W[0,element,b], WT.last_W[1,element,b], blade_ang, element)
             
             #Dynamic Filtering
             if Config.DynFilter:
-                Wy_new, Wz_new = f.DynFiltering (Wy_qs, Wz_qs, a, LA.norm(V_0), element, WT, Config)
+                Wy_new, Wz_new = f.DynFiltering (WT.last_W[0,element,b], WT.last_W[1,element,b], a, LA.norm(V_0_vec), element, b, WT, Config)
             else:
                 Wy_new, Wz_new = Wy_qs, Wz_qs
             
-            Wy_old, Wz_old = Wy_new, Wz_new
-            
+            WT.last_W[0,element,b] = Wy_new
+            WT.last_W[1,element,b] = Wz_new
+                       
             load_py_lst.append(py)
             load_pz_lst.append(pz)
             
             #Saving info of 11th element of the 1st blade
             if element == 10 and b == 0:
-                V_y_lst.append(V_0[1])
-                V_z_lst.append(V_0[2])
+                V_y_lst.append(V_0_vec[1])
+                V_z_lst.append(V_0_vec[2])
                 C_l_lst.append(C_l)
                 C_d_lst.append(C_d)
                 load_py_elem_lst.append(py)

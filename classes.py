@@ -29,16 +29,26 @@ class WT:#Wind Turbine
                    'airfoildata/FFA-W3-360.txt','airfoildata/FFA-W3-480.txt',
                    'airfoildata/FFA-W3-600.txt','airfoildata/cylinder.txt']
             
-            #Readin of tables:
-            self.cl_tab = np.zeros([105,len(self.thick_lst)])
-            self.cd_tab = np.zeros([105,6])
-            self.cm_tab = np.zeros([105,6])
+            #Reading of tables:
+            blade_ele = 105
+            self.cl_tab = np.zeros([blade_ele,len(self.thick_lst)])
+            self.cd_tab = np.zeros([blade_ele,6])
+            self.cm_tab = np.zeros([blade_ele,6])
             for i in range(np.size(files)):
              self.attack_ang_lst, self.cl_tab[:,i], self.cd_tab[:,i], self.cm_tab[:,i] = np.loadtxt(files[i], skiprows=0).T
             
+                      
+            #Blade element information
+            self.px = []*blade_ele
+            self.py = []*blade_ele
+            self.Wy_old = np.zeros([blade_ele, self.B])
+            self.Wz_old = np.zeros([blade_ele, self.B])
+            self.last_W = np.zeros([2,blade_ele, self.B])
+            self.last_W_qs = np.zeros([2,blade_ele, self.B])
+            self.last_W_int = np.zeros([2,blade_ele, self.B])
             return
         
-    #Geometry
+    #Default Geometry
     H = 119   #[m]
     L_s = 7.1 #[m]
     R = 89.15 #[m]
@@ -47,18 +57,12 @@ class WT:#Wind Turbine
     cone_ang = np.radians(0) #degrees
     a = 3.32 # Tower radius [m]
 
-    #Operation
+    #Default Operation
     n = 7.224 #RPM
     w = n * np.pi / 60 #rad/s
     yaw_ang = np.radians(0) #degrees
     pitch_ang = np.radians(0) #degrees
     
-    #Blade element information
-    px = []*105
-    py = []*105
-    last_W = [0,0]
-    last_W_qs = [0,0]
-    last_W_int = [0,0]
 
 class Wind:#Wind conditions
     V_0_H = 10 #m/s
@@ -69,19 +73,20 @@ class Config:
     deltaT = 0.1
     WindShear = True
     TowerEffect = True
-    DynFilter = False
+    DynFilter = True
     
 class Sim(WT):#This class contains the current information of the simulation and stores it
     def __ini__(self):
         self.t_end = 2*np.pi / WT.w * self.TotalRev
         self.t_arr = np.arange(0, self.t_end, self.deltaT)
-    #Configuration
+        
+    #Default Configuration
     deltaT = 0.1 #[s]
     TotalRev = 1
     
     WindShear = True
     TowerEffect = True
-    DynFilter = True
+    DynFilter = False
     
     #Blade element information buffer
     last_W = []*2
