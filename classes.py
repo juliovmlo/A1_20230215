@@ -20,6 +20,7 @@ class WT:#Wind Turbine
             self.b_lst = bladedata [:,b_col]
             self.c_lst = bladedata [:,c_col]
             self.t_lst = bladedata [:,t_col]
+            n_ele = len(self.r_lst)
             
             #Load airfoil data
             # NOTE THAT IN PYTHON THE INTERPOLATION REQUIRES THAT THE VALUES INCREASE
@@ -29,23 +30,30 @@ class WT:#Wind Turbine
                    'airfoildata/FFA-W3-360.txt','airfoildata/FFA-W3-480.txt',
                    'airfoildata/FFA-W3-600.txt','airfoildata/cylinder.txt']
             
-            #Reading of tables:
-            blade_ele = 105
-            self.cl_tab = np.zeros([blade_ele,len(self.thick_lst)])
-            self.cd_tab = np.zeros([blade_ele,6])
-            self.cm_tab = np.zeros([blade_ele,6])
-            for i in range(np.size(files)):
-             self.attack_ang_lst, self.cl_tab[:,i], self.cd_tab[:,i], self.cm_tab[:,i] = np.loadtxt(files[i], skiprows=0).T
             
-                      
+            #Reading of tables:
+            data_points = 105
+            self.cl_stat_tab = np.zeros([data_points,len(self.thick_lst)])
+            self.cd_stat_tab = np.zeros([data_points,6])
+            self.fs__stat_tab = np.zeros([data_points,6])
+            self.cl__inv_tab = np.zeros([data_points,6])
+            self.cl__fs_tab = np.zeros([data_points,6])
+            
+            for i in range(np.size(files)):
+             self.attack_ang_lst, self.cl_stat_tab[:,i], self.cd_stat_tab[:,i], _, self.fs__stat_tab[:,i], self.cl__inv_tab[:,i], self.cl__fs_tab[:,i] = np.loadtxt(files[i], skiprows=0).T
+            
+            
             #Blade element information
-            self.px = []*blade_ele
-            self.py = []*blade_ele
-            self.Wy_old = np.zeros([blade_ele, self.B])
-            self.Wz_old = np.zeros([blade_ele, self.B])
-            self.last_W = np.zeros([2,blade_ele, self.B])
-            self.last_W_qs = np.zeros([2,blade_ele, self.B])
-            self.last_W_int = np.zeros([2,blade_ele, self.B])
+            self.blade = 0
+            self.element = 0
+            self.px = []*n_ele
+            self.py = []*n_ele
+            self.Wy_old = np.zeros([n_ele, self.B])
+            self.Wz_old = np.zeros([n_ele, self.B])
+            self.last_W = np.zeros([2,n_ele, self.B])
+            self.last_W_qs = np.zeros([2,n_ele, self.B])
+            self.last_W_int = np.zeros([2,n_ele, self.B])
+            self.last_f_s = np.zeros([n_ele, self.B]) #Flow separation
             return
         
     #Default Geometry
@@ -58,14 +66,14 @@ class WT:#Wind Turbine
     a = 3.32 # Tower radius [m]
 
     #Default Operation
-    n = 7.224 #RPM
-    w = n * np.pi / 60 #rad/s
+    n = 7.229 #RPM
+    w = n * np.pi / 30 #rad/s
     yaw_ang = np.radians(0) #degrees
     pitch_ang = np.radians(0) #degrees
     
 
 class Wind:#Wind conditions
-    V_0_H = 10 #m/s
+    V_0_H = 9 #m/s
     nu = 0.2 #shear
     rho = 1.225 #density [kg/m3]
     
@@ -73,26 +81,27 @@ class Config:
     deltaT = 0.1
     WindShear = True
     TowerEffect = True
-    DynFilter = True
-    
-class Sim(WT):#This class contains the current information of the simulation and stores it
-    def __ini__(self):
-        self.t_end = 2*np.pi / WT.w * self.TotalRev
-        self.t_arr = np.arange(0, self.t_end, self.deltaT)
-        
-    #Default Configuration
-    deltaT = 0.1 #[s]
-    TotalRev = 1
-    
-    WindShear = True
-    TowerEffect = True
     DynFilter = False
+    DynStall = False
     
-    #Blade element information buffer
-    last_W = []*2
-    last_W_qs = []*2
-    last_W_int = []*2
+# class Sim(WT):#This class contains the current information of the simulation and stores it
+#     def __ini__(self):
+#         self.t_end = 2*np.pi / WT.w * self.TotalRev
+#         self.t_arr = np.arange(0, self.t_end, self.deltaT)
+        
+#     #Default Configuration
+#     deltaT = 0.1 #[s]
+#     TotalRev = 1
     
-    #Memory
-    px = []*105
-    py = []*105
+#     WindShear = True
+#     TowerEffect = True
+#     DynFilter = False
+    
+#     #Blade element information buffer
+#     last_W = []*2
+#     last_W_qs = []*2
+#     last_W_int = []*2
+    
+#     #Memory
+#     px = []*105
+#     py = []*105

@@ -112,7 +112,8 @@ def get_v0 (WT, Wind, Config, pos):
     
     return V_0
 
-def force_coeffs_WT(WT, attack_ang, element):
+def force_coeffs_WT(WT, Config, attack_ang, V_rel_abs):
+    #Could try to make it simpler just having as an imput (WT, thickness, angle and V_rel)
     
     """Gets the force coefficients given the angle of attack and the
     thickness ratio.
@@ -127,25 +128,44 @@ def force_coeffs_WT(WT, attack_ang, element):
         cm -- pitch moment coeficient [-]
     """
     
-    cl_aoa = np.zeros([1,6])
-    cd_aoa = np.zeros([1,6])
-    cm_aoa = np.zeros([1,6])
+    cl_stat_aoa = np.zeros([1,6])
+    cd_stat_aoa = np.zeros([1,6])
+    fs_stat_aoa = np.zeros([1,6])
+    cl_inv__aoa = np.zeros([1,6])
+    cl_fs_aoa = np.zeros([1,6])
+    
+    # self.cl_stat_tab = np.zeros([data_points,len(self.thick_lst)])
+    # self.cd_stat_tab = np.zeros([data_points,6])
+    # self.fs__stat_tab = np.zeros([data_points,6])
+    # self.cl__inv_tab = np.zeros([data_points,6])
+    # self.cl__fs_tab = np.zeros([data_points,6])
     
     #Interpolate to current angle of attack (aoa):
     #Ineficient: could interpolate only two closest tables
     for i in range(np.size(WT.thick_lst)):
-        cl_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cl_tab[:,i])
-        cd_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cd_tab[:,i])
-        cm_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cm_tab[:,i])
+        cl_stat_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cl_stat_tab[:,i])
+        cd_stat_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cd_stat_tab[:,i])
+        fs_stat_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.fs__stat_tab[:,i])
+        cl_inv__aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cl__inv_tab[:,i])
+        cl_fs_aoa[0,i] = np.interp (np.degrees(attack_ang), WT.attack_ang_lst, WT.cl__fs_tab[:,i])
     
     #Interpolate to current thickness:
-    cl = np.interp (WT.t_lst[element], WT.thick_lst, cl_aoa[0,:])
-    cd = np.interp (WT.t_lst[element], WT.thick_lst, cd_aoa[0,:])
-    cm = np.interp (WT.t_lst[element], WT.thick_lst, cm_aoa[0,:])
+    cl_stat = np.interp (WT.t_lst[WT.element], WT.thick_lst, cl_stat_aoa[0,:])
+    C_d = np.interp (WT.t_lst[WT.element], WT.thick_lst, cd_stat_aoa[0,:])
+    fs_stat = np.interp (WT.t_lst[WT.element], WT.thick_lst, fs_stat_aoa[0,:])
+    cl_inv = np.interp (WT.t_lst[WT.element], WT.thick_lst, cl_inv__aoa[0,:])
+    cl_fs = np.interp (WT.t_lst[WT.element], WT.thick_lst, cl_fs_aoa[0,:])
     
-    return cl, cd, cm
+    if Config.DynStall:
+        tau = 4 * WT.c_lst[WT.element] / V_rel_abs
+        f_s = fs_stat + (WT.last_f_s[WT.element,WT.blade] - fs_stat)*np.exp(-Config.deltaT/tau)
+        C_l = f_s*cl_inv + (1-f_s)*cl_fs
+    else:
+        C_l = cl_stat
+    
+    return C_l, C_d
 
-def QuasySteadyIW(WT, Wind, V_0, Wy_old, Wz_old, blade_ang, element):
+def QuasySteadyIW(WT, Config, Wind, V_0, Wy_old, Wz_old, blade_ang, element):
     """
     Quasy Steady Induced Wind
     Calculates the quasi steady induced velocities, i.e. the velocities that
@@ -169,16 +189,15 @@ def QuasySteadyIW(WT, Wind, V_0, Wy_old, Wz_old, blade_ang, element):
     flow_ang = np.arctan(V_rel_z/-V_rel_y)
     twist_ang = WT.b_lst[element]
     attack_ang = flow_ang - (twist_ang + WT.pitch_ang)
-    C_l, C_d, _ = force_coeffs_WT(WT, attack_ang, element)
+    C_l, C_d = force_coeffs_WT(WT, Config, attack_ang, V_rel_abs)
                         
     #Glauert's correction
-    a = -Wz_old / LA.norm(V_0_4)
+    a = -Wz_old / Wind.V_0_H #To get the induce factor we need to use the hub hight wind velocity
     if a > 1/3: f_g = 1/4*(5-3*a)
     else: f_g = 1
     
     #Plandtl's tip loss correction
-    F = 1
-    #F = 2/np.pi*np.arccos(np.exp(-WT.B/2*(WT.R-WT.r_lst[element])/(WT.r_lst[element]*np.sin(abs(flow_ang)))))
+    F = 2/np.pi * np.arccos(np.exp(-WT.B/2 * (WT.R - WT.r_lst[element])/(WT.r_lst[element]*np.sin(abs(flow_ang)))))
     
     #Getting the lift anf drag
     Const = 1/2 * Wind.rho * V_rel_abs**2 * WT.c_lst[element]
