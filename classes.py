@@ -78,10 +78,10 @@ class Wind:#Wind conditions
     rho = 1.225 #density [kg/m3]
     
 class Config:
-    deltaT = 0.1
-    WindShear = True
-    TowerEffect = True
-    DynFilter = False
+    deltaT = 0.5
+    WindShear = False
+    TowerEffect = False
+    DynFilter = True
     DynStall = False
     
 # class Sim(WT):#This class contains the current information of the simulation and stores it

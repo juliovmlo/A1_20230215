@@ -218,18 +218,15 @@ def DynFiltering (Wy_qs, Wz_qs, a, V_0, element, b, WT, Config):
     k = 0.6
     tau1 = 1.1/(1-1.3*a)*WT.R/V_0
     tau2 = (0.39 - 0.26*(WT.r_lst[element]/WT.R)**2)*tau1
-    
+    W_lst = []
     for i, W_qs in enumerate([Wy_qs, Wz_qs]):
         
         H = W_qs + k * tau1*(W_qs - WT.last_W_qs[i,element,b])/Config.deltaT
         W_int = H + (WT.last_W_int[i,element,b] - H)*np.exp(-Config.deltaT/tau1)
         W = W_int + (WT.last_W[i,element,b] - W_int)*np.exp(-Config.deltaT/tau2)
-        
+        W_lst.append(W)
         #Store
         WT.last_W_int[i,element,b] = W_int
         WT.last_W[i,element,b] = W
     
-    if element == 11:   
-        debug =True
-    
-    return WT.last_W_int[0,element,b], WT.last_W_int[1,element,b]
+    return W_lst[0], W_lst[1]

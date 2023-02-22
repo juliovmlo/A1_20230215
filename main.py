@@ -20,7 +20,8 @@ rotor_ang_lst = []
 rotor_ang = 0
 
 TotalRev = 2
-t_end = 2*np.pi / WT.w * TotalRev
+#t_end = 2*np.pi / WT.w * TotalRev
+t_end = 200 #[s]
 t_arr = np.arange(0,t_end, Config.deltaT)
 
 px_lst = [] #Absolute position
@@ -46,12 +47,17 @@ thrust_lst = []
 blade_thrust_tab = np.zeros((WT.B, len(t_arr)))
 power_lst = []
 
+a_arr = np.zeros((len(t_arr), WT.B, len(WT.r_lst)))
+
 for t_step, t in enumerate(t_arr):
     
-    # #Pitch change
-    # change = 0
-    # if t > 5:
-    #     WT.pitch_ang = np.radians(8)
+    #Update pitch
+    if t < 100:
+        WT.pitch_ang = np.radians(0)
+    elif t < 150:
+        WT.pitch_ang = np.radians(2) 
+    else:
+        WT.pitch_ang = np.radians(0)
     
     #Inicialize blade loop
     thrust = 0
@@ -61,6 +67,8 @@ for t_step, t in enumerate(t_arr):
         
         #Update position of blade
         blade_ang = rotor_ang + b*2*np.pi/WT.B
+        
+        
         
         #Inicialize radius loop
         load_py_lst = []
@@ -74,15 +82,22 @@ for t_step, t in enumerate(t_arr):
             #V_0 in the blade element
             V_0_vec = f.get_v0 (WT, Wind, Config, pos)
             
+            #Debug
+            if t > 100-Config.deltaT:
+                debug = True
+            
             #Quasy Steady Induced Wind
             Wy_qs, Wz_qs, a, py, pz, C_l, C_d = f.QuasySteadyIW(WT, Config, Wind, V_0_vec, WT.last_W[0,element,b], WT.last_W[1,element,b], blade_ang, element)
+            a_arr[t_step, b, element] = a
             
             #Dynamic Filtering
             if Config.DynFilter:
-                Wy_new, Wz_new = f.DynFiltering (WT.last_W[0,element,b], WT.last_W[1,element,b], a, LA.norm(V_0_vec), element, b, WT, Config)
+                Wy_new, Wz_new = f.DynFiltering (Wy_qs, Wz_qs, a, LA.norm(V_0_vec), element, b, WT, Config)
             else:
                 Wy_new, Wz_new = Wy_qs, Wz_qs
             
+            WT.last_W_qs[0,element,b] = Wy_qs
+            WT.last_W_qs[1,element,b] = Wz_qs
             WT.last_W[0,element,b] = Wy_new
             WT.last_W[1,element,b] = Wz_new
                        
@@ -169,7 +184,7 @@ for t_step, t in enumerate(t_arr):
 
 # plt.figure(dpi=120)
 # plt.title('Steady state power')
-# plt.plot(t_arr[:], np.array(power_lst)/1e6)
+# plt.plot(t_arr[:], np.array(power_lst)/1e3)
 # plt.gca().set_ylim(bottom=0)
 # plt.ylabel('Power [kW]')
 # plt.figure()
@@ -186,18 +201,18 @@ for t_step, t in enumerate(t_arr):
 
 #2
 
-plt.figure(dpi=120)
-plt.title('Thrust force')
-rev_lst = [t*WT.w/(2*np.pi) for t in t_arr]
-plt.plot(rev_lst[:], np.array(thrust_lst[:])/1e3, label = 'T$_{Total}$')
-plt.plot(rev_lst[:], np.array(blade_thrust_tab[0,:])/1e3, label = 'T$_{blade 1}$')
-plt.plot(rev_lst[:], np.array(blade_thrust_tab[1,:])/1e3, label = 'T$_{blade 2}$')
-plt.plot(rev_lst[:], np.array(blade_thrust_tab[2,:])/1e3, label = 'T$_{blade 3}$')
-plt.gca().set_ylim(bottom=0)
-plt.ylabel('Thrust force [kN]')
-plt.xlabel('Revolutions [-]')
-plt.legend()
-plt.figure()
+# plt.figure(dpi=120)
+# plt.title('Thrust force')
+# rev_lst = [t*WT.w/(2*np.pi) for t in t_arr]
+# plt.plot(rev_lst[:], np.array(thrust_lst[:])/1e3, label = 'T$_{Total}$')
+# plt.plot(rev_lst[:], np.array(blade_thrust_tab[0,:])/1e3, label = 'T$_{blade 1}$')
+# plt.plot(rev_lst[:], np.array(blade_thrust_tab[1,:])/1e3, label = 'T$_{blade 2}$')
+# plt.plot(rev_lst[:], np.array(blade_thrust_tab[2,:])/1e3, label = 'T$_{blade 3}$')
+# plt.gca().set_ylim(bottom=0)
+# plt.ylabel('Thrust force [kN]')
+# plt.xlabel('Revolutions [-]')
+# plt.legend()
+# plt.figure()
 
 # fig = plt.figure(dpi=120)
 # ax1 = fig.add_subplot(111)
@@ -217,6 +232,18 @@ plt.figure()
 # plt.show()
 
 #3
+
+plt.figure(dpi=120)
+plt.title('Thrust force')
+plt.plot(t_arr[100:], np.array(thrust_lst[100:])/1e3)
+plt.ylabel('Thrust force [kN]')
+plt.figure()
+
+plt.figure(dpi=120)
+plt.title('Power')
+plt.plot(t_arr[100:], np.array(power_lst[100:])/1e3)
+plt.ylabel('Power [kW]')
+plt.figure()
 
   
 # plt.figure(dpi=120)
